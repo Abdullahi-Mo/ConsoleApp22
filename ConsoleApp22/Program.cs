@@ -19,7 +19,7 @@ namespace UI
             while (running)
             {
                 Console.Clear();
-                Console.WriteLine("Välkommen till TempHumidityApp!");
+                Console.WriteLine("Välkommen till Abdullahi/Abdikadirs dataväder analys:-)!");
                 Console.WriteLine("Välj ett alternativ:");
                 Console.WriteLine("1. Visa alla data");
                 Console.WriteLine("2. Visa medeltemperatur");
