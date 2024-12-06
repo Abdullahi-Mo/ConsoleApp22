@@ -1,12 +1,11 @@
-﻿using System;
+﻿using CsvHelper;
+using CsvHelper.Configuration;
+using Core.Models;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
-using Core.Models;
-using Core.Services;
-using CsvHelper;
-using CsvHelper.Configuration;
 
 public static class CsvImporter
 {
@@ -19,7 +18,8 @@ public static class CsvImporter
     {
         var records = new List<TempHumidityRecord>();
 
-        var config = new CsvConfiguration(CultureInfo.InvariantCulture)
+        // Ange svensk kultur för att hantera decimaler korrekt
+        var config = new CsvConfiguration(CultureInfo.GetCultureInfo("sv-SE"))
         {
             HasHeaderRecord = true,
             BadDataFound = null,
@@ -32,17 +32,22 @@ public static class CsvImporter
             using (var reader = new StreamReader(filePath))
             using (var csv = new CsvReader(reader, config))
             {
-                records = csv.GetRecords<TempHumidityRecord>().ToList();
+                csv.Context.RegisterClassMap<TempHumidityRecordMap>();  // Registrera mappningen för CSV
+
+                // Läs alla rader från CSV-filen och lagra dem i en lista
+                var tempHumidityRecords = csv.GetRecords<TempHumidityRecord>().ToList();
+
+                // Lägg till lästa poster till records
+                records.AddRange(tempHumidityRecords);
             }
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Ett fel inträffade vid inläsning av CSV-filen: {ex.Message}");
+            Console.WriteLine($"Ett CSV-relaterat fel inträffade: {ex.Message}");
             throw;
         }
 
         // Beräkna mögelrisk för varje post
-        var recordsWithMoldRisk = records.Select(r => (Record: r, MoldRisk: CalculationService.CalculateMoldRisk(r))).ToList();
-        return recordsWithMoldRisk;
+        return records.Select(r => (Record: r, MoldRisk: r.Humidity * r.Temperature / 100.0)).ToList();
     }
 }

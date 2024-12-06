@@ -19,7 +19,7 @@ namespace UI
             while (running)
             {
                 Console.Clear();
-                Console.WriteLine("Välkommen till TempHumidityApp!");
+                Console.WriteLine("Välkommen till Abdullahi/Abdikadirs dataväder analys!");
                 Console.WriteLine("Välj ett alternativ:");
                 Console.WriteLine("1. Visa alla data");
                 Console.WriteLine("2. Visa medeltemperatur");
@@ -184,9 +184,54 @@ namespace UI
             Console.ReadKey();
         }
 
+        static void ImportFromCsv(AppDbContext context)
+        {
+            Console.Write("\nAnge sökvägen till CSV-filen: ");
+            var filePath = Console.ReadLine();
+
+            if (!File.Exists(filePath))
+            {
+                Console.WriteLine("Filen hittades inte.");
+                Console.ReadKey();
+                return;
+            }
+
+            try
+            {
+                var recordsWithMoldRisk = CsvImporter.Import(filePath);
+                foreach (var (record, moldRisk) in recordsWithMoldRisk)
+                {
+                    if (!context.TempHumidityRecords.Any(r =>
+                        r.Date == record.Date &&
+                        r.Temperature == record.Temperature &&
+                        r.Humidity == record.Humidity))
+                    {
+                        context.TempHumidityRecords.Add(record);
+                        Console.WriteLine($"Lagt till: {record.Date:yyyy-MM-dd}, {record.Temperature}°C, {record.Humidity}%, Mögelrisk: {moldRisk:F2}");
+                    }
+                }
+                context.SaveChanges();
+                Console.WriteLine("Import från CSV lyckades.");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Ett fel inträffade vid inläsning: {ex.Message}");
+            }
+
+            Console.ReadKey();
+        }
+
         static void ShowTemperatureDifferences(AppDbContext context)
         {
             var records = context.TempHumidityRecords.ToList();
+            if (!records.Any())
+            {
+                Console.WriteLine("Inga poster hittades i databasen.");
+                Console.WriteLine("Tryck på valfri tangent för att fortsätta...");
+                Console.ReadKey();
+                return;
+            }
+
             var (maxDiff, minDiff, maxIndoor, maxOutdoor, minIndoor, minOutdoor) =
                 CalculationService.SortIndoorOutdoorDifferences(records);
 
@@ -276,43 +321,6 @@ namespace UI
             }
 
             Console.WriteLine("\nTryck på valfri tangent för att fortsätta...");
-            Console.ReadKey();
-        }
-
-        static void ImportFromCsv(AppDbContext context)
-        {
-            Console.Write("\nAnge sökvägen till CSV-filen: ");
-            var filePath = Console.ReadLine();
-
-            if (!File.Exists(filePath))
-            {
-                Console.WriteLine("Filen hittades inte.");
-                Console.ReadKey();
-                return;
-            }
-
-            try
-            {
-                var recordsWithMoldRisk = CsvImporter.Import(filePath);
-                foreach (var (record, moldRisk) in recordsWithMoldRisk)
-                {
-                    if (!context.TempHumidityRecords.Any(r =>
-                        r.Date == record.Date &&
-                        r.Temperature == record.Temperature &&
-                        r.Humidity == record.Humidity))
-                    {
-                        context.TempHumidityRecords.Add(record);
-                        Console.WriteLine($"Lagt till: {record.Date:yyyy-MM-dd}, {record.Temperature}°C, {record.Humidity}%, Mögelrisk: {moldRisk:F2}");
-                    }
-                }
-                context.SaveChanges();
-                Console.WriteLine("Import från CSV lyckades.");
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Ett fel inträffade vid inläsning: {ex.Message}");
-            }
-
             Console.ReadKey();
         }
     }
